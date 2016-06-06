@@ -1,0 +1,1501 @@
+<html lang="en" id= "myHtml"><head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Line Drawing</title>
+  <script type="text/javascript" src="./lib/d3.js"></script>
+  <style type="text/css">
+  </style>
+  <head>
+    <body id = "main">
+
+      <form id = "button">
+        <input type = "button" name = "button_1" value = "Add L/A/Y Node" onclick = "addNode()">
+        <input type = "button" name = "button_2" value = "Add T Node" onclick = "addTNode()">
+        <input type = "button" name = "button_3" value = "Start Interpretation" onclick="interpret()">
+      </form>
+      <script type="text/javascript">
+      //link Type 1: From A to B ; Type 2:From B to A;  Type 3: Plus ; Type 4: Minus
+      var progress_storage = [];
+      var links = {};
+      var button_1_clicked = 0;
+      var button_2_clicked = 0;
+      var windowWidth = window.innerWidth;
+      var windowHeight = window.innerHeight;
+      var canvasHeight = windowHeight - 180;
+      var selected_node_id = "";
+      var clicked_line_id = "";
+      d3.select("#main").append("div")
+      .attr("id","header")
+      .attr("width",windowWidth)
+      .attr("height","180px")
+      .append("p")
+      .html("Line Drawing Interpretation Tool");
+
+      d3.select("#main").append("svg")
+      .attr("id","myCanvas")
+      .attr("width",windowWidth)
+      .attr("height", canvasHeight)
+      .style("background", "#00FFFF")
+      .on("click", createNode);
+      d3.select("#myCanvas")
+      .append("marker")
+      .attr("id","forwardArrow")
+      //.attr("markerUnits", "stroke-width")
+      .attr("markerWidth","3")
+      .attr("markerHeight", "3")
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX","30")
+      .attr("refY","0")
+      .attr("orient","auto")
+      .append("polygon")
+      .attr("points","10,0 0,5 0,-5")
+      .attr("fill","red");
+
+      d3.select("#myCanvas")
+      .append("marker")
+      .attr("id","reverseArrow")
+      .attr("markerWidth","3")
+      .attr("markerHeight","3")
+      .attr("viewBox","0 -5 10 10")
+      .attr("refX","30")
+      .attr("refY","0")
+      .attr("orient","auto")
+      .append("polygon")
+      .attr("points","10,5 10,-5 0,0")
+      .attr("fill","red");
+
+      d3.select("#myCanvas")
+      .append("marker")
+      .attr("id","plusMark")
+      .attr("markerWidth","3")
+      .attr("markerHeight","3")
+      .attr("viewBox","0 0 15 15")
+      .attr("refX","30")
+      .attr("refY","5")
+      .attr("orient","auto")
+      .append("polygon")
+      .attr("points","5,0 10,0 10,5 15,5 15,10 10,10 10,15 5,15 5,10 0,10 0,5 5,5")
+      .attr("fill","red");
+
+      d3.select("#myCanvas")
+      .append("marker")
+      .attr("id","minusMark")
+      .attr("markerWidth","3")
+      .attr("markerHeight","3")
+      .attr("viewBox","0 0 15 15")
+      .attr("refX","30")
+      .attr("refY","5")
+      .attr("orient","auto")
+      .append("polygon")
+      .attr("points","5,0 10,0 10,15 5,15")
+      .attr("fill","red");
+
+      var i = 0;
+      var first_node_selected = 0;
+      var node_is_appendable = 0;
+      var nodes = [];
+      function createNode(){
+        if(button_1_clicked){
+          var x = d3.mouse(this)[0];
+          var y = d3.mouse(this)[1];
+          d3.select("#myCanvas")
+          .append("circle")
+          .attr("cx", x)
+          .attr("cy", y)
+          .attr("r", 5)
+          .style("fill","red")
+          .attr("id", "" + i)
+          .attr("opacity", 0.3)
+          .on("mouseover", function(){
+            d3.select(this).attr("r", 8);
+          })
+          .on("mouseout", function(){
+            d3.select(this).attr("r", 5);
+          })
+          .on("click",function(){
+            if(first_node_selected == 0){
+              first_node_selected = 1;
+              selected_node_id = this.id;
+              d3.select(this).attr("r", 6)
+              .style("fill","purple");
+            }
+            else{
+              first_node_selected = 0;
+              var first_node_index = parseInt(selected_node_id);
+              var this_node_index = parseInt(this.id);
+              var first_x = nodes[first_node_index].x;
+              var first_y = nodes[first_node_index].y;
+              var this_x = nodes[this_node_index].x;
+              var this_y = nodes[this_node_index].y;
+              d3.select("#myCanvas").append("line")
+              .style("stroke", "black")
+              .style("stroke-width", "4px")
+              .attr("x1", first_x)
+              .attr("y1", first_y)
+              .attr("x2", this_x)
+              .attr("y2", this_y)
+              .attr("id", selected_node_id + "_" + this.id)
+              .on("click", function(){
+                clicked_line_id = this.id;
+                if(button_2_clicked){
+                  createTNode();
+                }
+              });
+
+              var first_node = document.getElementById(selected_node_id);
+              first_node.setAttribute("style", "fill: black");
+              nodes[parseInt(selected_node_id)].connected_nodes.push(this.id);
+              nodes[parseInt(this.id)].connected_nodes.push(selected_node_id);
+              if(links[selected_node_id + "_" + this.id] == undefined && links[this.id + "_" + selected_node_id] == undefined){
+                 links[selected_node_id + "_" + this.id] = 0;
+              }
+            }
+          });
+          nodes[i] = {};
+          nodes[i]["x"] = x;
+          nodes[i]["y"] = y;
+          nodes[i]["connected_nodes"] = [];
+          nodes[i]["node_label"] = 0;
+          i++;
+
+          button_1_clicked = 0;
+        }
+      }
+      function addNode(){
+        button_1_clicked = 1;
+      }
+
+      //Main body of program
+
+      function interpret(){
+
+        var iter;
+        for(iter = 0; iter < nodes.length; iter++){
+          progress_storage[iter] = {};
+        }
+        //console.log(progress_storage);
+        nodes.forEach(function(d, i){
+          if(d.connected_nodes.length == 2){
+            d["edgeType"] = "L";
+          }
+          else if(d.connected_nodes.length == 3){
+            if(d.edgeType != "T"){
+              var first_connected_node = d.connected_nodes[0];
+              var second_connected_node = d.connected_nodes[1];
+              var third_connected_node = d.connected_nodes[2];
+              var angle1 = calculate_angle("" + i + "_" + first_connected_node, "" + i + "_" + second_connected_node);
+              var angle2 = calculate_angle("" + i + "_" + second_connected_node, "" + i + "_" + third_connected_node);
+              var angle3 = calculate_angle("" + i + "_" + first_connected_node, "" + i + "_" + third_connected_node);
+              if((angle1 + angle2 - angle3) < 0.0001 || (angle1 + angle3 - angle2) < 0.0001 || (angle2 + angle3 - angle1) < 0.0001 ){
+                d["edgeType"] = "A";
+                if(angle1 + angle2 - angle3 < 0.0001){
+                  var buffer = d.connected_nodes[0];
+                  d.connected_nodes[0] = d.connected_nodes[1];
+                  d.connected_nodes[1] = buffer;
+                }
+                else if(angle2 + angle3 - angle1 < 0.0001){
+                  var buffer = d.connected_nodes[0];
+                  d.connected_nodes[0] = d.connected_nodes[2];
+                  d.connected_nodes[2] = buffer;
+                }
+              }
+              else{
+                d["edgeType"] = "Y";
+              }
+            }
+
+          }
+
+
+        });
+        reorder_nodes();
+        find_solutions();
+        console.log(nodes);
+      }
+      //Assume there are at most 20 results,which should be quite enough for most cases.
+      var results = [];
+      var nodes_results = [];
+      var num_results = 1;
+      function find_solutions(){
+        for(i = 0; i < 20; i++){
+          results[i] = {};
+          nodes_results[i] = {};
+        }
+        if(find_solution() == 0){
+          alert("No legitimate interpretation!");
+          return 0;
+        }
+
+        while(1){
+         if(find_next_solution() == 0){
+           break;
+         }
+        }
+        var number_deleted = check_solutions();
+        console.log(results);
+        if(num_results - number_deleted >= 2) {
+          alert("This drawing can be interpreted in "+ (num_results - number_deleted) + " ways. Use arrow keys to switch between them");
+        }
+        showResult(0);
+        var index_result = 0;
+        if(num_results - number_deleted >= 2){
+          document.onkeydown = function(e){
+            if(e.which == 39){
+              while(index_result < num_results - 1){
+
+                index_result ++;
+                if(results[index_result]["deleted"] != 1){
+                  break;
+                }
+                }
+                showResult(index_result);
+            }
+            else if(e.which == 37){
+              while(index_result > 0){
+
+                index_result --;
+              if(results[index_result]["deleted"] != 1){
+                break;
+              }
+
+              }
+              showResult(index_result);
+            }
+          }
+        }
+        }
+        function check_solutions(){
+          var i,j;
+          var num_buffer = num_results;
+          var is_result = 1;
+          var num_to_delete = 0;
+          for(i = 0; i < num_buffer -1 ; i++){
+
+            Object.keys(links).forEach(function(link){
+             links[link] = results[i][link];
+           });
+           for(j = 0; j < nodes.length; j++){
+           nodes[j].node_label = nodes_results[i][""+j];
+           if( update_links(j,0) == 0 ){
+             results[i]["deleted"] = 1;
+             num_to_delete++;
+             break;
+           }
+
+}
+          }
+          return num_to_delete;
+        }
+       function showResult(i){
+         var line_name;
+         Object.keys(results[i]).forEach(function(link){
+          if(document.getElementById(link) != null && document.getElementById != undefined){
+            line_name = link;
+          }
+          else{
+            var line_nodes = link.split("_");
+            line_name = line_nodes[1] + "_" + line_nodes[0];
+          }
+          if(results[i][link] == 1){
+            document.getElementById(line_name)
+            .setAttribute("marker-end","url(#forwardArrow)");
+          }
+          else if(results[i][link] == 2){
+            document.getElementById(line_name)
+            .setAttribute("marker-end","url(#reverseArrow)");
+          }
+          else if(results[i][link] == 3){
+            document.getElementById(line_name)
+            .setAttribute("marker-end","url(#plusMark)");
+          }
+          else if(results[i][link] == 4){
+            document.getElementById(line_name)
+            .setAttribute("marker-end","url(#minusMark)");
+          }
+         });
+       }
+      function find_solution(){
+        nodes[0].node_label ++;
+        update_links(0,1);
+        store_progess(0);
+        var i = 1;
+        var can_find_answer;
+        while(i < nodes.length){
+          nodes[i].node_label++;
+          can_find_answer = 1;
+          while(update_links(i,0) == 0){
+            nodes[i].node_label++;
+            if( at_the_end(i) && update_links(i,0) == 0){
+                 can_find_answer = 0;
+                 break;
+                }
+          }
+          if(!can_find_answer){
+            var backtrack_success = backtrack(i);
+            if(!backtrack_success){
+              return 0;
+            }
+          }
+          i++;
+        }
+        Object.keys(links).forEach(function (link){
+         results[0][link] = links[link];
+        });
+        /*Object.keys(nodes).forEach(function (node)){
+          nodes_results[0][node] = nodes[node].node_label;
+        }*/
+        for(var j = 0; j < nodes.length; j++){
+          nodes_results[0][""+j] = nodes[j].node_label;
+        }
+        return 1;
+      }
+      function find_next_solution(){
+        var i = nodes.length -1 ;
+        recover_links(i-1);
+        if(find_spot(i)){
+         Object.keys(links).forEach(function (link){
+           results[num_results][link] = links[link];
+
+         });
+         /*Object.keys(nodes).forEach(function (node){
+           nodes_results[num_results][node] = nodes[node].node_label;
+         });*/
+         for(var j = 0; j < nodes.length; j++){
+           nodes_results[num_results][""+j] = nodes[j].node_label;
+         }
+         num_results++;
+         return 1;
+        }
+        if(backtrack(i)){
+
+          Object.keys(links).forEach(function (link){
+            results[num_results][link] = links[link];
+
+          });
+          /*Object.keys(nodes).forEach(function (node){
+            results[num_results][node] = nodes[node].node_label;
+          });*/
+          for(var j = 0; j < nodes.length; j++){
+            nodes_results[num_results][""+j] = nodes[j].node_label;
+          }
+        num_results++;
+          return 1;
+        }
+      return 0;
+
+      }
+      function at_the_end(i){
+        if((nodes[i].edgeType == "L" && nodes[i].node_label == 6) ||
+            (nodes[i].edgeType == "A" && nodes[i].node_label == 3) ||
+            (nodes[i].edgeType == "Y" && nodes[i].node_label == 5) ||
+            (nodes[i].edgeType == "T" && nodes[i].node_label == 4)){
+              return 1;
+            }
+        else {
+          return 0;
+        }
+      }
+      function backtrack(i){
+       nodes[i].node_label = 0;
+       /*for(j = i; j < nodes.length; j++){
+         nodes[j].node_label = 0;
+       }*/
+       recover_links(i - 1);
+       if(i == 1){
+         if(at_the_end(0)){
+           return 0;
+         }
+
+      else {
+        while(!at_the_end(0)){
+          nodes[0].node_label ++;
+          //Modified!
+          update_links(0,1);
+          if(find_spot(1) == 1){
+            return 1;
+          }
+          nodes[1].node_label = 0;
+        }
+        return 0;
+      }
+      }
+      else{
+      if(at_the_end(i-1)){
+        while(!at_the_end(0) && backtrack(i - 1)){
+          if(find_spot(i) == 1){
+            return 1;
+          }
+          nodes[i].node_label = 0;
+        }
+        if(at_the_end(0)){
+          if( backtrack(i-1) == 1){
+            if(find_spot(i) == 1){
+              return 1;
+            }
+            nodes[i].node_label = 0;
+          }
+        }
+      }
+      else{
+        while(!at_the_end(i-1)){
+          //board[attempts[position-1]][columns_searched[position-1]] = 0;
+          //attempts[position - 1 ]++;
+          recover_links(i-2);
+          nodes[i-1].node_label++;
+          if(update_links(i-1,0) == 1){
+          //board[attempts[position-1]][columns_searched[position-1]] = 1;
+          if(find_spot(i) == 1){
+            return 1;
+          }
+          nodes[i].node_label = 0;
+        }
+        }
+        //nodes[i].node_label = 0;
+        //recover_links(i-1);
+        while(!at_the_end(0) && backtrack(i - 1)){
+          if(find_spot(i) == 1){
+            return 1;
+          }
+          nodes[i].node_label = 0;
+        }
+        if(at_the_end(0)){
+          if(backtrack(i-1) == 1){
+            if(find_spot(i) == 1){
+              return 1;
+            }
+            nodes[i].node_label = 0;
+          }
+        }
+      }
+      return 0;
+    }
+}
+
+function find_spot(position){
+  if(at_the_end(position)){
+    return 0;
+  }
+  nodes[position].node_label++;
+  while(!at_the_end(position) && !update_links(position,0)){
+    nodes[position].node_label++;
+  }
+  if(at_the_end(position)){
+    if( !update_links(position,0) ){
+      return 0;
+    }
+
+  }
+
+  return 1;
+}
+function recover_links(position){
+  Object.keys(links).forEach(function(link){
+  links[link] = progress_storage[position][link];
+  });
+}
+
+//link Type 1: From A to B ; Type 2:From B to A;  Type 3: Plus ; Type 4: Minus
+//j serves as an indicator on whether you need to consider constraints. 0: YES 1: NO
+      function update_links(i,j){
+        var first_link,second_link,third_link;
+        var first_value,second_value,third_value;
+        //direction: 0 means from self to another, 1 means from another to self
+        var first_direction, second_direction, third_direction;
+        if(links[nodes[i].connected_nodes[0] + "_" + i] != undefined){
+          first_link = nodes[i].connected_nodes[0] + "_" + i;
+          first_direction = 1;
+        }
+        else{
+          first_link = i + "_" + nodes[i].connected_nodes[0];
+          first_direction = 0;
+        }
+        if(links[nodes[i].connected_nodes[1] + "_" + i] != undefined){
+          second_link = nodes[i].connected_nodes[1] + "_" + i;
+          second_direction = 1;
+        }
+        else{
+          second_link = i + "_" + nodes[i].connected_nodes[1];
+          second_direction = 0;
+        }
+        first_value = links[first_link];
+        second_value = links[second_link];
+        if(nodes[i].edgeType == "L"){
+          //L1
+          if(nodes[i].node_label == 1){
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else {
+                links[first_link] = 2;
+              }
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)  ){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else{
+                links[first_link] = 2;
+              }
+            }
+           else {
+             return 0;
+           }
+           if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1)){
+             if(second_direction == 0){
+               links[second_link] = 2;
+             }
+             else{
+               links[second_link] = 1;
+             }
+             store_progess(i);
+             return 1;
+           }
+           else {
+             links[first_link] = first_value;
+             return 0;
+           }
+          }
+          //L2
+          else if(nodes[i].node_label == 2){
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 2;
+              }
+              else {
+                links[first_link] = 1;
+              }
+              if(second_direction == 0){
+                links[second_link] = 1;
+              }
+              else{
+                links[second_link] = 2;
+              }
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || (first_direction == 0 && first_value == 2) || (first_direction == 1 && first_value == 1)  ){
+              if(first_direction == 0){
+                links[first_link] = 2;
+              }
+              else{
+                links[first_link] = 1;
+              }
+            }
+           else {
+             return 0;
+           }
+           if(second_value == 0 || (second_direction == 0 && second_value == 1) || (second_direction == 1 && second_value == 2)){
+             if(second_direction == 0){
+               links[second_link] = 1;
+             }
+             else{
+               links[second_link] = 2;
+             }
+             store_progess(i);
+             return 1;
+           }
+           else {
+             links[first_link] = first_value;
+             return 0;
+           }
+          }
+          //L3
+          else if(nodes[i].node_label == 3){
+            if(j == 1){
+              links[first_link] = 3;
+              if(second_direction == 0){
+                links[second_link] = 1;
+              }
+              else{
+                links[second_link] = 2;
+              }
+              store_progess(i);
+              return 1;
+            }
+           if(first_value == 0 || first_value == 3){
+             links[first_link] = 3;
+           }
+           else {
+             return 0;
+           }
+           if(second_value == 0 || (second_direction == 0 && second_value == 1) || (second_direction == 1 && second_value == 2)){
+             if(second_direction == 0){
+               links[second_link] = 1;
+             }
+             else{
+               links[second_link] = 2;
+             }
+             store_progess(i);
+             return 1;
+           }
+           else {
+             links[first_link] = first_value;
+             return 0;
+           }
+          }
+          //L4
+          else if(nodes[i].node_label == 4){
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 2;
+              }
+              else{
+                links[first_link] = 1;
+              }
+              links[second_link] = 3;
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || (first_direction == 0 && first_value == 2) || (first_direction == 1 && first_value == 1)){
+              if(first_direction == 0){
+                links[first_link] = 2;
+              }
+              else{
+                links[first_link] = 2;
+              }
+            }
+            else {
+              return 0;
+            }
+            if(second_value == 0 || second_value == 3){
+              links[second_link] = 3;
+              store_progess(i);
+              return 1;
+            }
+            else{
+              links[first_link] = first_value;
+              return 0;
+            }
+          }
+          //L5
+          else if(nodes[i].node_label == 5){
+            if(j == 1){
+              links[first_link] = 4;
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || first_value == 4){
+              links[first_link] = 4;
+            }
+            else {
+              return 0;
+            }
+            if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1)){
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              store_progess(i);
+              return 1;
+            }
+            else{
+              links[first_link] = first_value;
+              return 0;
+            }
+
+          }
+          //L6
+          else {
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else{
+                links[first_link] = 2;
+              }
+              links[second_link] = 4;
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else{
+                links[first_link] = 2;
+              }
+            }
+            else{
+              return 0;
+            }
+           if(second_value == 0 ||second_value == 4){
+             links[second_link] = 4;
+             store_progess(i);
+             return 1;
+           }
+           else{
+             links[first_link] = first_value;
+             return 0;
+           }
+
+          }
+
+        }
+        if(links[nodes[i].connected_nodes[2] + "_" + i] != undefined){
+          third_link = nodes[i].connected_nodes[2] + "_" + i;
+          third_direction = 1;
+        }
+        else{
+          third_link = i + "_" + nodes[i].connected_nodes[2];
+          third_direction = 0;
+        }
+        third_value = links[third_link];
+        if(nodes[i].edgeType == "A"){
+          //A1
+          if(nodes[i].node_label == 1){
+            if(j == 1){
+              links[first_link] = 3;
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              if(third_direction == 0){
+                links[third_link] = 1;
+              }
+              else{
+                links[third_link] = 2;
+              }
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || first_value == 3){
+           if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1)  ){
+             if(third_value == 0 ||(third_direction == 0 && third_value == 1)  ||  (third_direction == 1 && third_value == 2) ){
+                links[first_link] = 3;
+                if(second_direction == 0){
+                  links[second_link] = 2;
+                }
+                else{
+                  links[second_link] = 1;
+                }
+                if(third_direction == 0){
+                  links[third_link] = 1;
+                }
+                else{
+                  links[third_link] = 2;
+                }
+                store_progess(i);
+                return 1;
+             }
+           }
+         }
+         return 0;
+          }
+          //A2
+          else if(nodes[i].node_label == 2){
+            if(j == 1){
+              links[first_link] = 4;
+              links[second_link] = 3;
+              links[third_link] = 3;
+              store_progess(i);
+              return 1;
+            }
+           if(first_value == 0 || first_value == 4){
+             if(second_value == 0 || second_value == 3){
+               if(third_value == 0 || third_value == 3){
+                 links[first_link] = 4;
+                 links[second_link] = 3;
+                 links[third_link] = 3;
+                 store_progess(i);
+                 return 1;
+               }
+             }
+           }
+           return 0;
+          }
+          //A3
+          else{
+            if(j == 1){
+              links[first_link] = 3;
+              links[second_link] = 4;
+              links[third_link] = 4;
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || first_value == 3){
+              if(second_value == 0 || second_value == 4){
+                if(third_value == 0 || third_value == 4){
+                  links[first_link] = 3;
+                  links[second_link] = 4;
+                  links[third_link] = 4;
+                  store_progess(i);
+                  return 1;
+                }
+              }
+            }
+            return 0;
+          }
+
+        }
+        if(nodes[i].edgeType == "Y"){
+          //Y1
+          if(nodes[i].node_label == 1){
+            if(j == 1){
+              links[first_link] = 3;
+              links[second_link] = 3;
+              links[third_link] = 3;
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || first_value == 3){
+              if(second_value == 0 || second_value == 3){
+                if(third_value == 0 || third_value == 3){
+                  links[first_link] = 3;
+                  links[second_link] = 3;
+                  links[third_link] = 3;
+                  store_progess(i);
+                  return 1;
+                }
+              }
+            }
+            return 0;
+          }
+          //Y2
+          else if(nodes[i].node_label == 2){
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 2;
+              }
+              else{
+                links[first_link] = 1;
+              }
+              if(second_direction == 0){
+                links[second_link] = 1;
+              }
+              else{
+                links[second_link] = 2;
+              }
+              links[third_link] = 4;
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || (first_direction == 0 && first_value == 2) || (first_direction == 1 && first_value == 1) ){
+              if(second_value == 0 || (second_direction == 0 && second_value == 1) || (second_direction == 1 && second_value == 2) ){
+                if(third_value == 0 || third_value == 4 ){
+                   if(first_direction == 0){
+                     links[first_link] = 2;
+                   }
+                   else {
+                     links[first_link] = 1;
+                   }
+                   if(second_direction == 0){
+                     links[second_link] = 1;
+                   }
+                   else{
+                     links[second_link] = 2;
+                   }
+                   links[third_link] = 4;
+                   store_progess(i);
+                   return 1;
+                }
+              }
+            }
+                return 0;
+          }
+          //Y3
+          else if(nodes[i].node_label == 3){
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 1;
+                }
+              else {
+                links[first_link] = 2;
+              }
+              links[second_link] = 4;
+              if(third_direction == 0){
+                links[third_link] = 2;
+              }
+              else{
+                links[third_link] = 1;
+              }
+              store_progess(i);
+              return 1;
+
+            }
+             if(first_value == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)){
+               if(second_value == 0 || second_value == 4){
+                 if(third_value == 0 || (third_direction == 0 && third_value == 2) || (third_direction == 1 && third_value == 1)){
+                   if(first_direction == 0){
+                     links[first_link] = 1;
+                   }
+                   else{
+                     links[first_link] = 2;
+                   }
+                   links[second_link] = 4;
+                   if(third_direction == 0){
+                     links[third_link] = 2;
+                   }
+                   else{
+                     links[third_link] = 1;
+                   }
+                   store_progess(i);
+                   return 1;
+                 }
+               }
+             }
+             return 0;
+          }
+          //Y4
+          else if(nodes[i].node_label == 4){
+            if(j == 1){
+              links[first_link] = 4;
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              if(third_direction == 0){
+                links[third_link] = 1;
+              }
+              else{
+                links[third_link] = 2;
+              }
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || first_value == 4){
+              if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1)){
+                if(third_value == 0 || (third_direction == 0 && third_value == 1) || (third_direction == 1 && third_value == 2)){
+                  links[first_link] = 4;
+                  if(second_direction == 0){
+                    links[second_link] = 2;
+                  }
+                  else{
+                    links[second_link] = 1;
+                  }
+                  if(third_direction == 0){
+                    links[third_link] = 1;
+                  }
+                  else{
+                    links[third_link] = 2;
+                  }
+                  store_progess(i);
+                  return 1;
+                }
+              }
+            }
+            return 0;
+          }
+          //Y5
+          else{
+            if(j == 1){
+              links[first_link] = 4;
+              links[second_link] = 4;
+              links[third_link] = 4;
+              store_progess(i);
+              return 1;
+            }
+            if(first_value == 0 || first_value == 4){
+              if(second_value == 0 || second_value == 4){
+                if(third_value == 0 || third_value == 4){
+                  links[first_link] = 4;
+                  links[second_link] = 4;
+                  links[third_link] = 4;
+                  store_progess(i);
+                  return 1;
+                }
+              }
+            }
+            return 0;
+          }
+        }
+        else{
+          //T1
+          if(nodes[i].node_label == 1){
+            if(j == 1){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else{
+                links[first_link] = 2;
+              }
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              if(third_direction == 0){
+                links[third_direction] = 1;
+              }
+              else{
+                links[third_direction] = 2;
+              }
+              store_progess(i);
+              return 1;
+            }
+          if(first_value == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)){
+            if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1) ){
+              if(third_value == 0 || (third_direction == 0 && third_value == 1) || (third_direction == 1 && third_value == 2)){
+                    if(first_direction == 0){
+                      links[first_link] = 1;
+                    }
+                    else {
+                      links[first_link] = 2;
+                    }
+                    if(second_direction == 0){
+                      links[second_link] = 2;
+                    }
+                    else{
+                      links[second_link] = 1;
+                    }
+                    if(third_direction == 0){
+                      links[third_link] = 1;
+                    }
+                    else{
+                      links[third_link] = 2;
+                    }
+                    store_progess(i);
+                    return 1;
+              }
+            }
+          }
+                    return 0;
+        }
+      //T2
+      if(nodes[i].node_label == 2){
+        if(j == 1){
+          if(first_direction == 0){
+            links[first_link] = 1;
+          }
+          else{
+            links[first_link] = 2;
+          }
+          if(second_direction == 0){
+            links[second_link] = 2;
+          }
+          else{
+            links[second_link] = 1;
+          }
+          if(third_direction == 0){
+            links[third_link] = 2;
+          }
+          else{
+            links[third_link] = 1;
+          }
+          store_progess(i);
+          return 1;
+        }
+         if(first_direction == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)){
+           if(second_direction == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1)){
+             if(third_direction == 0 || (third_direction == 0 && third_value == 2) || (third_direction == 1 && third_value == 1)){
+                if(first_direction == 0){
+                  links[first_link] = 1;
+                }
+                else{
+                  links[first_link] = 2;
+                }
+                if(second_direction == 0){
+                  links[second_link] = 2;
+                }
+                else{
+                  links[second_link] = 1;
+                }
+                if(third_direction == 0){
+                  links[third_link] = 2;
+                }
+                else{
+                  links[third_link] = 1;
+                }
+                store_progess(i);
+                return 1;
+             }
+           }
+
+         }
+         return 0;
+      }
+      //T3
+      else if(nodes[i].node_label == 3){
+        if(j == 1){
+          if(first_direction == 0){
+            links[first_link] = 1;
+          }
+          else{
+            links[first_link] = 2;
+          }
+          if(second_direction == 0){
+            links[second_link] = 2;
+          }
+          else{
+            links[second_value] = 1;
+          }
+          links[third_link] = 3;
+          store_progess(i);
+          return 1;
+        }
+        if(first_value == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)){
+          if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1) ){
+            if(third_value == 0 || third_value == 3){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else{
+                links[first_link] = 2;
+              }
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              links[third_link] = 3;
+              store_progess(i);
+              return 1;
+            }
+          }
+        }
+        return 0;
+      }
+      //T4
+      else{
+        if(j == 1){
+        if(first_direction == 0){
+          links[first_link] = 1;
+        }
+        else{
+          links[first_link] = 2;
+        }
+        if(second_direction == 0){
+          links[second_link] = 2;
+        }
+        else{
+          links[second_link] = 1;
+        }
+        links[third_link] = 4;
+        store_progess(i);
+        return 1;
+      }
+        if(first_value == 0 || (first_direction == 0 && first_value == 1) || (first_direction == 1 && first_value == 2)){
+          if(second_value == 0 || (second_direction == 0 && second_value == 2) || (second_direction == 1 && second_value == 1) ){
+            if(third_value == 0 || third_value == 4){
+              if(first_direction == 0){
+                links[first_link] = 1;
+              }
+              else{
+                links[first_link] = 2;
+              }
+              if(second_direction == 0){
+                links[second_link] = 2;
+              }
+              else{
+                links[second_link] = 1;
+              }
+              links[third_link] = 4;
+              store_progess(i);
+              return 1;
+            }
+          }
+        }
+        return 0;
+      }
+
+      }
+
+}
+      function store_progess(i){
+        Object.keys(links).forEach(function(link){
+          progress_storage[i][link] = links[link];
+        });
+      }
+
+      function clear_links(){
+        Object.keys(links).forEach(function(key){
+          links[key] = 0;
+        });
+      }
+
+
+//This function is called to make sure that order of the links fit the label dictionary.
+function reorder_nodes(){
+  var rotate_radian = 8.0/ 180 * Math.PI;
+  var bufferx;
+  var buffery;
+  nodes.forEach(function(d, i){
+    var x0 = d.x;
+    var y0 = -1 * d.y;
+    var x1 = nodes[parseInt(d.connected_nodes[0])].x;
+    var y1 = -1 * nodes[parseInt(d.connected_nodes[0])].y;
+    var x2 = nodes[parseInt(d.connected_nodes[1])].x;
+    var y2 = -1 * nodes[parseInt(d.connected_nodes[1])].y;
+
+    if(d.edgeType == "L"){
+      //Rotate until center node is on top
+
+      while(y1 - y0 < 0 || y2 - y0 < 0 ||(x1 < x0 && x2 < x0)||(x1 > x0 && x2 > x0)){
+
+        bufferx = x0 * Math.cos(rotate_radian) - y0 * Math.sin(rotate_radian);
+        buffery = x0 * Math.sin(rotate_radian) + y0 * Math.cos(rotate_radian);
+        x0 = bufferx;
+        y0 = buffery;
+        bufferx = x1 * Math.cos(rotate_radian) - y1 * Math.sin(rotate_radian);
+        buffery = x1 * Math.sin(rotate_radian) + y1 * Math.cos(rotate_radian);
+        x1 = bufferx;
+        y1 = buffery;
+        bufferx = x2 * Math.cos(rotate_radian) - y2 * Math.sin(rotate_radian);
+        buffery = x2 * Math.sin(rotate_radian) + y2 * Math.cos(rotate_radian);
+        x2 = bufferx;
+        y2 = buffery;
+
+      }
+
+      if(x2 < x1){
+        var buffer = d.connected_nodes[0];
+        d.connected_nodes[0] = d.connected_nodes[1];
+        d.connected_nodes[1] = buffer;
+      }
+    }
+    else if(d.edgeType == "A"){
+      var x3 = nodes[parseInt(d.connected_nodes[2])].x;
+      var y3 = -1 * nodes[parseInt(d.connected_nodes[2])].y;
+      while(y1 - y0 > 0 || y2 - y0 > 0 || y3 - y0 > 0){
+
+        bufferx = x0 * Math.cos(rotate_radian) - y0 * Math.sin(rotate_radian);
+        buffery = x0 * Math.sin(rotate_radian) + y0 * Math.cos(rotate_radian);
+        x0 = bufferx;
+        y0 = buffery;
+        bufferx = x1 * Math.cos(rotate_radian) - y1 * Math.sin(rotate_radian);
+        buffery = x1 * Math.sin(rotate_radian) + y1 * Math.cos(rotate_radian);
+        x1 = bufferx;
+        y1 = buffery;
+        bufferx = x2 * Math.cos(rotate_radian) - y2 * Math.sin(rotate_radian);
+        buffery = x2 * Math.sin(rotate_radian) + y2 * Math.cos(rotate_radian);
+        x2 = bufferx;
+        y2 = buffery;
+        bufferx = x3 * Math.cos(rotate_radian) - y3 * Math.sin(rotate_radian);
+        buffery = x3 * Math.sin(rotate_radian) + y3 * Math.cos(rotate_radian);
+        x3 = bufferx;
+        y3 = buffery;
+      }
+
+
+if(x3 < x2){
+  var buffer = d.connected_nodes[1];
+  d.connected_nodes[1] = d.connected_nodes[2];
+  d.connected_nodes[2] = buffer;
+}
+}
+else if (d.edgeType == "T"){
+  var x3 = nodes[parseInt(d.connected_nodes[2])].x;
+  var y3 = -1 * nodes[parseInt(d.connected_nodes[2])].y;
+  while(y3 - y0 > 0){
+    bufferx = x0 * Math.cos(rotate_radian) - y0 * Math.sin(rotate_radian);
+    buffery = x0 * Math.sin(rotate_radian) + y0 * Math.cos(rotate_radian);
+    x0 = bufferx;
+    y0 = buffery;
+    bufferx = x1 * Math.cos(rotate_radian) - y1 * Math.sin(rotate_radian);
+    buffery = x1 * Math.sin(rotate_radian) + y1 * Math.cos(rotate_radian);
+    x1 = bufferx;
+    y1 = buffery;
+    bufferx = x2 * Math.cos(rotate_radian) - y2 * Math.sin(rotate_radian);
+    buffery = x2 * Math.sin(rotate_radian) + y2 * Math.cos(rotate_radian);
+    x2 = bufferx;
+    y2 = buffery;
+    bufferx = x3 * Math.cos(rotate_radian) - y3 * Math.sin(rotate_radian);
+    buffery = x3 * Math.sin(rotate_radian) + y3 * Math.cos(rotate_radian);
+    x3 = bufferx;
+    y3 = buffery;
+  }
+  if(x2 < x1){
+    var first = d.connected_nodes[0];
+    d.connected_nodes[0] = d.connected_nodes[1];
+    d.connected_nodes[1] = first;
+  }
+}
+
+});
+
+}
+
+
+function calculate_angle(vector_1, vector_2){
+  var _line_nodes_1 = vector_1.split("_");
+  var _line_nodes_2 = vector_2.split("_");
+  var product, length_1, length_2;
+  var x1, y1, x2_1, y2_1, x2_2, y2_2;
+  if(_line_nodes_1[0] == _line_nodes_2[0]){
+    x1 = nodes[ parseInt(_line_nodes_1[0]) ].x;
+    y1 = nodes[ parseInt(_line_nodes_1[0]) ].y;
+    x2_1 = nodes[ parseInt(_line_nodes_1[1]) ].x;
+    y2_1 = nodes[ parseInt(_line_nodes_1[1]) ].y;
+    x2_2 = nodes[ parseInt(_line_nodes_2[1])].x;
+    y2_2 = nodes[ parseInt(_line_nodes_2[1])].y;
+
+  }
+  else if(_line_nodes_1[0] == _line_nodes_2[1]){
+    x1 = nodes[ parseInt(_line_nodes_1[0]) ].x;
+    y1 = nodes[ parseInt(_line_nodes_1[0]) ].y;
+    x2_1 = nodes[ parseInt(_line_nodes_1[1]) ].x;
+    y2_1 = nodes[ parseInt(_line_nodes_1[1]) ].y;
+    x2_2 = nodes[ parseInt(_line_nodes_2[0])].x;
+    y2_2 = nodes[ parseInt(_line_nodes_2[0])].y;
+  }
+  else if(_line_nodes_1[1] == _line_nodes_2[0]){
+    x1 = nodes[ parseInt(_line_nodes_1[1]) ].x;
+    y1 = nodes[ parseInt(_line_nodes_1[1]) ].y;
+    x2_1 = nodes[ parseInt(_line_nodes_1[0]) ].x;
+    y2_1 = nodes[ parseInt(_line_nodes_1[0]) ].y;
+    x2_2 = nodes[ parseInt(_line_nodes_2[1])].x;
+    y2_2 = nodes[ parseInt(_line_nodes_2[1])].y;
+  }
+  else {
+    x1 = nodes[ parseInt(_line_nodes_1[1]) ].x;
+    y1 = nodes[ parseInt(_line_nodes_1[1]) ].y;
+    x2_1 = nodes[ parseInt(_line_nodes_1[0]) ].x;
+    y2_1 = nodes[ parseInt(_line_nodes_1[0]) ].y;
+    x2_2 = nodes[ parseInt(_line_nodes_2[0])].x;
+    y2_2 = nodes[ parseInt(_line_nodes_2[0])].y;
+  }
+  length_1 = Math.sqrt(Math.pow(x2_1 - x1, 2) + Math.pow(y2_1 - y1, 2));
+  length_2 = Math.sqrt(Math.pow(x2_2 - x1, 2) + Math.pow(y2_2 - y1, 2));
+  product = (x2_1 - x1) * (x2_2 - x1) + (y2_1 - y1) * (y2_2 - y1);
+  var angle = Math.acos(product / (length_1 * length_2));
+  return angle;
+
+
+
+}
+function addTNode(){
+  button_2_clicked = 1;
+}
+function createTNode(){
+  var x = d3.mouse(document.getElementById("myCanvas"))[0];
+  var y = d3.mouse(document.getElementById("myCanvas"))[1];
+  d3.select("#myCanvas")
+  .append("circle")
+  .attr("cx", x)
+  .attr("cy", y)
+  .attr("r", 8)
+  .style("fill","black")
+  .attr("id", "" + i)
+  .on("mouseover", function(){
+    d3.select(this).attr("r", 8);
+  })
+  .on("mouseout", function(){
+    d3.select(this).attr("r", 2);
+  })
+  .on("click",function(){
+    if(first_node_selected == 0){
+      first_node_selected = 1;
+      selected_node_id = this.id;
+      d3.select(this).attr("r", 6)
+      .style("fill","red");
+    }
+    else{
+      first_node_selected = 0;
+      var first_node_index = parseInt(selected_node_id);
+      var this_node_index = parseInt(this.id);
+      var first_x = nodes[first_node_index].x;
+      var first_y = nodes[first_node_index].y;
+      var this_x = nodes[this_node_index].x;
+      var this_y = nodes[this_node_index].y;
+      d3.select("#myCanvas").append("line")
+      .style("stroke", "black")
+      .style("stroke-width", "4px")
+      .attr("x1", first_x)
+      .attr("y1", first_y)
+      .attr("x2", this_x)
+      .attr("y2", this_y)
+      .attr("id", selected_node_id + "_"+ this.id)
+      .on("click", function(){
+        if(button_2_clicked){
+          clicked_line_id = this.id;
+          createTNode();
+        }
+      });
+      var first_node = document.getElementById(selected_node_id);
+      first_node.setAttribute("style", "fill: black");
+      nodes[parseInt(selected_node_id)].connected_nodes.push(this.id);
+      nodes[parseInt(this.id)].connected_nodes.push(selected_node_id);
+      if(links[selected_node_id + "_" + this.id] == undefined && links[this.id + "_" + selected_node_id] == undefined){
+         links[selected_node_id + "_" + this.id] = 0;
+      }
+    }
+  });
+  nodes[i] = {};
+  nodes[i]["x"] = x;
+  nodes[i]["y"] = y;
+  nodes[i]["connected_nodes"] = [];
+  nodes[i]["node_label"] = 0;
+  var line_nodes = clicked_line_id.split("_");
+  nodes[i].connected_nodes[0] = line_nodes[0];
+  nodes[i].connected_nodes[1] = line_nodes[1];
+  links[i + "_" + line_nodes[0]] = 0;
+  links[i + "_" + line_nodes[1]] = 0;
+  if(links[line_nodes[0] + "_" + line_nodes[1]] != undefined){
+    delete links[line_nodes[0] + "_" + line_nodes[1]];
+  }
+  else {
+    delete links[line_nodes[1] + "_" + line_nodes[0]];
+  }
+  //Update connection information of nodes connected to this edge to which T node has been appended.
+  var j;
+  for(j = 0; j < nodes[parseInt(line_nodes[0])].connected_nodes.length; j++){
+    if(nodes[parseInt(line_nodes[0])].connected_nodes[j] == line_nodes[1]){
+      nodes[parseInt(line_nodes[0])].connected_nodes[j] = "" + i;
+    }
+  }
+
+  for(j = 0; j < nodes[parseInt(line_nodes[1])].connected_nodes.length; j++){
+    if(nodes[parseInt(line_nodes[1])].connected_nodes[j] == line_nodes[0]){
+      nodes[parseInt(line_nodes[1])].connected_nodes[j] = "" + i;
+    }
+  }
+  nodes[i]["edgeType"] = "T";
+
+  d3.select("#myCanvas").append("line")
+  .style("stroke", "black")
+  .style("stroke-width", "2px")
+  .attr("x1", x)
+  .attr("y1", y)
+  .attr("x2", nodes[parseInt(line_nodes[0])].x)
+  .attr("y2", nodes[parseInt(line_nodes[0])].y)
+  .attr("id", i + "_"+ line_nodes[0])
+  .on("click", function(){
+    if(button_2_clicked){
+      clicked_line_id = this.id;
+      createTNode();
+    }
+  });
+  d3.select("#myCanvas").append("line")
+  .style("stroke", "black")
+  .style("stroke-width", "2px")
+  .attr("x1", x)
+  .attr("y1", y)
+  .attr("x2", nodes[parseInt(line_nodes[1])].x)
+  .attr("y2", nodes[parseInt(line_nodes[1])].y)
+  .attr("id", i + "_"+ line_nodes[1])
+  .on("click", function(){
+    if(button_2_clicked){
+      clicked_line_id = this.id;
+      createTNode();
+    }
+  });
+
+  button_2_clicked = 0;
+  i++;
+}
+</script>
+</body>
+
+
+</html>
